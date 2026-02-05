@@ -28,6 +28,7 @@ ERROR_MUST_PICK_DIFFERENT_CARD = "Can't pick the same card twice."
 ERROR_MUST_HAVE_DIFFERENT_NAME = "Card must have a different name."
 ERROR_NO_FURTHER_MOVES = "No further moves available with this card."
 ERROR_COMPUTERS_CANT_DO = "Computers can't do this action."  # Canceling and seeing card info are QOL features for people, not computers
+ERROR_ACTION_WITHELD_FROM_AI = "This action is witheld from AIs since it would harm their strategy"  # These are like automatic reflexes for the AI - things not to do that would harm 
 
 class Action(object):
     def __init__(self, gs, action_id):
@@ -246,7 +247,7 @@ class SelectFromBattlefield(Action):
         for long_card in self.card_list:
             if long_card.uid == self.action_id:
                 self.target = long_card
-                if self.gs.me.player_type == "computer_ai":
+                if self.gs.me.player_type.startswith("computer"):
                     if self.target in self.gs.me.battlefield:
                         return False, ERROR_ACTION_WITHELD_FROM_AI  # The AI should never, ever target their own long card
                 return True, None
@@ -492,9 +493,9 @@ class PlayFaceUp(Action):
             if self.resolving_card.name == "Noble Sacrifice":
                 if not self.gs.me.battlefield:
                     return False, ERROR_NO_SACRIFICE  # Must have available sacrifice
-                if not self.gs.opp.hand and self.gs.me.player_type == "computer_ai":
+                if not self.gs.opp.hand and self.gs.me.player_type.startswith("computer"):
                     return False, ERROR_ACTION_WITHELD_FROM_AI  # Helping out the AI
-            if self.gs.me.player_type == "computer_ai":
+            if self.gs.me.player_type.startswith("computer"):
                 if self.resolving_card.name == "The 'Ol Switcheroo" and self.gs.me.health >= self.gs.opp.health:
                     return False, ERROR_ACTION_WITHELD_FROM_AI  # Helping out the AI, you would never play Switcheroo if your opponent would benefit from it
                 if self.resolving_card.name == "Awakening" and not any(card for card in self.gs.me.power_cards if card.card_type == "long"):
@@ -557,8 +558,8 @@ class PlayFaceDown(Action):
             return False, ERROR_ENEMY_HAS_THE_MOON  #  If opponent has the moon, can't play power cards
         elif self.gs.me.power_plays_left < 1:
             return False, ERROR_CANT_PLAY_ANOTHER_POWER_CARD
-        if self.gs.me.player_type == "computer_ai":
-            if self.gs.me.name == "monster" and (self.resolving_card.name in ["Go All In" , "The 'Ol Switcheroo", "Mind Control"]):  # The AI should never, ever do this
+        if self.gs.me.player_type.startswith("computer"):
+            if self.gs.me.name == "monster" and (self.resolving_card.name in ["Go All In" , "The 'Ol Switcheroo"]):  # The AI should never, ever do this
                 return False, ERROR_ACTION_WITHELD_FROM_AI
             if self.gs.me.name == "hero" and self.resolving_card.name == "Awakening" and sum(1 for card in self.gs.me.hand if card.name == "Awakening") == 1:
                 return False, ERROR_ACTION_WITHELD_FROM_AI  # The AI should never play Awakening face down if they don't have another in their hand they can play

@@ -16,10 +16,10 @@ import multiprocessing
 import sys
 
 # Core Gameplay Classes
-from cardClass import Card, Awakening, HealthyEating, APLayfulPixie, APearlescentDragon, LastStand, Reconsider, NobleSacrifice, MonstersPawn, PowerTrip, PokerFace, CheapShot, TheOlSwitcheroo, Ultimatum, Peek
-from playerClass import Player
-from gamestateClass import GameState
-from actionClass import Action, InvalidAction, TargetHero, TargetMonster, GetCardInfo, Cancel, EndTurn, SelectFromHand, SelectFromBattlefield, SelectFromOwnBattlefield, SelectFromOppHand, SelectFromDeckTop2, SelectFromGraveyard, SelectFromDeck, SelectFromUltimatum, SelectFromDeckTop3, PlayFaceUp, PlayFaceDown
+from poker_monster.cardClass import Card, Awakening, HealthyEating, APLayfulPixie, APearlescentDragon, LastStand, Reconsider, NobleSacrifice, MonstersPawn, PowerTrip, PokerFace, CheapShot, TheOlSwitcheroo, Ultimatum, Peek
+from poker_monster.playerClass import Player
+from poker_monster.gamestateClass import GameState
+from poker_monster.actionClass import Action, InvalidAction, TargetHero, TargetMonster, GetCardInfo, Cancel, EndTurn, SelectFromHand, SelectFromBattlefield, SelectFromOwnBattlefield, SelectFromOppHand, SelectFromDeckTop2, SelectFromGraveyard, SelectFromDeck, SelectFromUltimatum, SelectFromDeckTop3, PlayFaceUp, PlayFaceDown
 
 hero_card_data = [
     (3, "Awakening", "hero", 3, "short", None, "Flip over your power cards, revealing them. Any that are short cards return to your hand. Any that are long cards stay on the board face-up."),
@@ -204,14 +204,15 @@ def create_action(gs, action_id):
 # for i in range(num_actions):
 #     print(f"Action {i}: {ACTION_MAP[i][j] if ACTION_MAP[i][j] else 'None'}")
 
-def display_info(gs):
+def display_gamestate(gs):
     lines = []
+    sort_key = lambda card: card.name  # or uid
+
     # Red and purple for Monser, green and yellow for hero
     if gs.turn_priority == "monster":
-        lines.append(f"\033[91m\n=== {gs.turn_priority.upper()}'s TURN (Turn {gs.turn_number}) ===\033[94m")
+        lines.append(f"{gs.turn_priority.upper()}'s TURN (Turn {gs.turn_number})")
     else:
-        lines.append(f"\033[92m\n=== {gs.turn_priority.upper()}'s TURN (Turn {gs.turn_number}) ===\033[93m")
-    lines.append(f"Turn Number: {gs.turn_number}")
+        lines.append(f"{gs.turn_priority.upper()}'s TURN (Turn {gs.turn_number})")
     lines.append(f"Game Phase: {gs.game_phase}")
     lines.append(f"My Health: {gs.me.health} | My Deck Size: {len(gs.me.deck)} | My Power: {gs.me.power}")
     lines.append(f"Opp Health: {gs.opp.health} | Opp Deck Size: {len(gs.opp.deck)} | Opp Hand Size: {len(gs.opp.hand)} | Opp Power Cards: {len(gs.opp.power_cards)}")
@@ -219,44 +220,42 @@ def display_info(gs):
     # These are for extra info not always present
     # Noble Sacrifice hand reveal
     if gs.game_phase == PHASE_DISCARDING_CARD_FROM_OPP_HAND:  
-        lines.append(f"Opp hand: {[card.name for card in gs.opp.hand]}")
+        lines.append(f"Opp hand: {[card.name for card in sorted(gs.opp.hand, key=sort_key)]}")
     # Peek top2 reveal
     if gs.game_phase == "choosing from Peek":
         top2 = gs.me.deck[:2]
-        lines.append(f"My deck top 2 cards: {[card.name for card in top2]}")
+        lines.append(f"My deck top 2 cards: {[card.name for card in sorted(top2, key=sort_key)]}")
     # Ultimatum deck reveal
     if gs.game_phase == PHASE_CHOOSING_ULTIMATUM_CARD:  
-        lines.append(f"My deck: {[card.name for card in gs.me.deck]}")
+        lines.append(f"My deck: {[card.name for card in sorted(gs.me.deck, key=sort_key)]}")
     # Ultimatum ultimatum
     if gs.game_phase == PHASE_OPP_CHOOSING_FROM_ULTIMATUM:  
-        lines.append(f"Opp Ultimatum: {[card.name for card in gs.cache[1:3]]}")
+        lines.append(f"Opp Ultimatum: {[card.name for card in sorted(gs.cache[1:3], key=sort_key)]}")
     # Reconsider reveal
     if gs.game_phase == PHASE_REORDERING_DECK_TOP3:
         top2 = gs.me.deck[:3]
-        lines.append(f"My deck top 3 cards: {[card.name for card in top2]}")
+        lines.append(f"My deck top 3 cards: {[card.name for card in sorted(top2, key=sort_key)]}")
     # Standard info
     if gs.me.hand:
-        lines.append(f"My Hand: {[card.name for card in gs.me.hand]}")
+        lines.append(f"My Hand: {[card.name for card in sorted(gs.me.hand, key=sort_key)]}")
     if gs.me.power_cards:
-        lines.append(f"My Power Cards: {[card.name for card in gs.me.power_cards]}")
+        lines.append(f"My Power Cards: {[card.name for card in sorted(gs.me.power_cards, key=sort_key)]}")
     if gs.me.battlefield:
-        lines.append(f"My Battlefield: {[(card.name, card.health) for card in gs.me.battlefield]}")
+        lines.append(f"My Battlefield: {[(card.name, card.health) for card in sorted(gs.me.battlefield, key=sort_key)]}")
     if gs.opp.battlefield:
-        lines.append(f"Opp Battlefield: {[(card.name, card.health) for card in gs.opp.battlefield]}")
+        lines.append(f"Opp Battlefield: {[(card.name, card.health) for card in sorted(gs.opp.battlefield, key=sort_key)]}")
     if gs.me.graveyard:
-        lines.append(f"My Graveyard: {[card.name for card in gs.me.graveyard]}")
+        lines.append(f"My Graveyard: {[card.name for card in sorted(gs.me.graveyard, key=sort_key)]}")
     if gs.opp.graveyard:
-        lines.append(f"Opp Graveyard: {[card.name for card in gs.opp.graveyard]}")
+        lines.append(f"Opp Graveyard: {[card.name for card in sorted(gs.opp.graveyard, key=sort_key)]}")
     if gs.me.monsters_pawn_buff:
         lines.append("Monster's Pawn buff is active")
     if gs.cache:
-        lines.append(f"\033[96mCache: {[card.name for card in gs.cache]}")
-    # Reset the colors
-    lines.append("\033[0m")  
+        lines.append(f"Cache: {[card.name for card in sorted(gs.cache, key=sort_key)]}")
 
     # Print card info in a basic way. Could be amended to display card art as well.
     if gs.game_phase == PHASE_VIEWING_CARD_INFO:
-        lines.append(f"\033[95mPower Cost: {gs.cache[0].power_cost}\n{gs.cache[0].card_text}\033[0m\n")  # cache[0] is the resolving card that we need to access text from
+        lines.append(f"Power Cost: {gs.cache[0].power_cost}\n{gs.cache[0].card_text}")  # cache[0] is the resolving card that we need to access text from
 
     return "\n".join(lines)
 
@@ -290,116 +289,92 @@ def display_actions(gs):
                 extra_info = f": {action.selected_card.name}" if action.card_list else ""
             if action_name == "SelectFromDeckTop3":
                 extra_info = f": {action.selected_card.name}" if action.card_list else ""
-            lines.append(f"[{action_id}] {action_name} {extra_info}")
+            lines.append(f"[{action_id}] {action_name}{extra_info}")
         elif error != ERROR_INVALID_SELECTION:  # QOL, error invalid shows up too often and don't need to see it
-            lines.append(f"[{action_id}] (Invalid) - {error}")
+            lines.append(f"[{action_id}] (Invalid) {error}")
         
     return "\n".join(lines)
 
-class Engine:
-    def __init__(self, **kwargs):
-        self.hero_type = kwargs['hero_type']
-        self.monster_type = kwargs['monster_type']
+def get_action_text(action_block, action_id):
+    # Parses the text block of available actions to find the specific line.
+    target_prefix = f"[{action_id}]"
+    # Split the text into individual lines
+    lines = action_block.split('\n')
     
-    def run_game(self, hero_type, monster_type, display=False):
+    for line in lines:
+        # Strip whitespace to handle indentation or trailing spaces
+        clean_line = line.strip()
+        # Check if this line starts with target "[16]"
+        if clean_line.startswith(target_prefix):
+            return clean_line
+    return None # Or raise an error if not found
+
+class GameEngine:
+    def __init__(self):
+        self.gs = None
+        self.hero = None
+        self.monster = None
+        self.num_actions = num_actions
+
+    def reset(self, hero_type="computer", monster_type="computer"):
+        # Starts the game from scratch.
+        # Reset the important stuff.
+        self.gs = None
+        self.hero = None
+        self.monster = None
+
+        # Build decks and players
         hero_deck, monster_deck = build_decks()
-        hero = Player("hero", hero_deck, hero_type)
-        monster = Player("monster", monster_deck, monster_type)
+        self.hero = Player("hero", hero_deck, hero_type)
+        self.monster = Player("monster", monster_deck, monster_type)
 
         # coin flip to see who goes first
         coin_flip = randint(0, 1)
         going_first = None
         if coin_flip == 0:  # Heads is for Monster, obviously
             going_first = "monster"
-            monster.going_first = True
+            self.monster.going_first = True
         else:
             going_first = "hero"
-            hero.going_first = True
-        
-        # Initialize the game state, resetting important variables like the game phase, cache, and turn history
-        gs = GameState(hero, monster, going_first, PHASE_AWAITING_INPUT, cache=[])
-        hero.shuffle()
-        monster.shuffle()
-        hero.draw(4)
-        monster.draw(4)
+            self.hero.going_first = True
 
-        while gs.winner is None:
-            if display:
-                print(display_info(gs))
-                print(display_actions(gs))
+        # Initialize the game state, resetting important variables like the game phase and cache
+        self.gs = GameState(self.hero, self.monster, going_first, PHASE_AWAITING_INPUT, cache=[])
+        self.hero.shuffle()
+        self.monster.shuffle()
+        self.hero.draw(4)
+        self.monster.draw(4)
 
-            while True:
-                try:
-                    # For people:
-                    if gs.me.player_type == "person":
-                        # NEED TO CONNECT THIS TO WEBSITE HERE (2/2)
-                        choice_number = int(input("Choose an action: "))  # int from 0 to num_actions - 1
-                    # For a random opponent:
-                    elif gs.me.player_type == "computer_random":
-                        choice_number = randint(0, num_actions - 2)  # -2 because cancel is not available to computers
+    def iterate(self, action_id):
+        # Uses the action_id to create an action and enacts it, which changes the game state. 
+        # Returns True if success
+        action = create_action(self.gs, action_id)
+        legal, reason = action.is_legal()
+        if legal:
+            action_text = get_action_text(display_actions(self.gs), action_id)
+            action.enact()
+        else:
+            return False, reason
+        return True, action_text
 
-                    action = create_action(gs, choice_number)
+    def get_display_text(self):
+        # Shows the information needed to play the game.
+        gamestate_display = display_gamestate(self.gs)
+        actions_display = display_actions(self.gs)
+        return gamestate_display, actions_display
 
-                    legal, reason = action.is_legal()
-                    if legal:
-                        # If legal, execute action
-                        if display:
-                            print(f"Executing action: {type(action).__name__} [{choice_number}]")
-                        action.enact()
-                        break
-                    else:
-                        # If not, give reason
-                        if gs.me.player_type == "person":
-                            print(f"Action not legal: {reason}")
+    def get_results(self):
+        # Returns a result if there is one. If game isn't over, returns None.
+        if self.gs.winner:
+            if self.gs.winner == "hero":
+                rewards = {"hero": 1.0, "monster": -1.0}
+            elif self.gs.winner == "monster":
+                rewards = {"hero": -1.0, "monster": 1.0}
+            else:
+                rewards = {"hero": 0.0, "monster": 0.0}
+            return rewards
+        else:
+            return None
 
-                except Exception as e:
-                    print(f"Please enter a number: {e}")
-                    exit()
-        
-        # Print winner with ~color~
-        if display:
-            if gs.winner == "monster":
-                print(f"\033[91mGame Over! Winner: {gs.winner}\033[0m")
-            elif gs.winner == "hero":
-                print(f"\033[92mGame Over! Winner: {gs.winner}\033[0m")
-            else:  # tie
-                print(f"Game Over! Winner: {gs.winner}")
-        else:  # Still print a small letter
-            if gs.winner == "monster":
-                print("\033[91mM\033[0m", end="")
-            elif gs.winner == "hero":
-                print("\033[92mH\033[0m", end="")
-            else:  # tie
-                print("T", end="")
-            
-        return gs.winner
-    
-    def do_testing_loop(self, best_of=1, display=True):
-        # Run multiple games in a row
-        hero_score = 0
-        monster_score = 0
-        for _ in range(best_of):
-            winner = self.run_game(hero_type=self.hero_type, 
-                                monster_type=self.monster_type, 
-                                display=display)
-            if winner == "hero":
-                hero_score += 1
-            if winner == "monster":
-                monster_score += 1
-
-        print("\nFinished all testing games")
-        print(f"The Hero's score: {hero_score}")
-        print(f"The Monster's score: {monster_score}\n")
-
-        return hero_score, monster_score
-
-if __name__ == '__main__':
-    game_settings = {
-        # Training parameters:
-        "hero_type": "computer_random",
-        "monster_type": "computer_random"
-    }
-
-    engine = Engine(**game_settings)
-
-    engine.do_testing_loop(10, display=True)
+    def get_current_player(self):
+        return self.gs.me
