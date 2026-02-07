@@ -295,20 +295,6 @@ def display_actions(gs):
         
     return "\n".join(lines)
 
-def get_action_text(action_block, action_id):
-    # Parses the text block of available actions to find the specific line.
-    target_prefix = f"[{action_id}]"
-    # Split the text into individual lines
-    lines = action_block.split('\n')
-    
-    for line in lines:
-        # Strip whitespace to handle indentation or trailing spaces
-        clean_line = line.strip()
-        # Check if this line starts with target "[16]"
-        if clean_line.startswith(target_prefix):
-            return clean_line
-    return None # Or raise an error if not found
-
 class GameEngine:
     def __init__(self):
         self.gs = None
@@ -349,19 +335,44 @@ class GameEngine:
         # Uses the action_id to create an action and enacts it, which changes the game state. 
         # Returns True if success
         action = create_action(self.gs, action_id)
-        legal, reason = action.is_legal()
-        if legal:
-            action_text = get_action_text(display_actions(self.gs), action_id)
-            action.enact()
-        else:
-            return False, reason
-        return True, action_text
+        return action.enact()
 
     def get_display_text(self):
         # Shows the information needed to play the game.
-        gamestate_display = display_gamestate(self.gs)
-        actions_display = display_actions(self.gs)
-        return gamestate_display, actions_display
+        gamestate_text = display_gamestate(self.gs)
+        actions_text = display_actions(self.gs)
+        return gamestate_text, actions_text
+
+    def get_action_text(self, actions_text, action_id):
+        # Parses the text block of available actions to find the specific line.
+        target_prefix = f"[{action_id}]"
+        # Split the text into individual lines
+        lines = actions_text.split('\n')
+        
+        for line in lines:
+            # Strip whitespace to handle indentation or trailing spaces
+            clean_line = line.strip()
+            # Check if this line starts with target "[16]"
+            if clean_line.startswith(target_prefix):
+                return clean_line
+        return None # Or raise an error if not found
+
+    def get_legal_actions(self, actions_text):
+        # Splits the text into individual lines to process them one by one
+        lines = actions_text.strip().split("\n")
+        valid_ids = []
+
+        for line in lines:
+            # Checks if the line contains a bracketed ID and is not marked Invalid
+            if line.startswith("[") and "(Invalid)" not in line:
+                # Finds where the number ends to slice it out correctly
+                end_index = line.find("]")
+                if end_index != -1:
+                    # Extracts the number substring and converts to integer
+                    action_id = int(line[1:end_index])
+                    valid_ids.append(action_id)
+                    
+        return valid_ids
 
     def get_results(self):
         # Returns a result if there is one. If game isn't over, returns None.
